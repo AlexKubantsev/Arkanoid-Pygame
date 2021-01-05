@@ -8,7 +8,8 @@ class Score:
     FONT_SIZE = 36
     SCORE_TEXT = "Score:"
     Y_INDENT_COEFF = 0.95
-    FONT_PX_COEFF = 4
+    X_SCORE_COORD = 750
+    FONT_SIZE_COEFF = 2
 
     def __init__(self, window_width, window_height):
         self.score = 0
@@ -22,9 +23,9 @@ class Score:
     def draw(self, surf):
         score = self.font.render(str(self.score), True, (0, 255, 0))
 
-        surf.blit(score, (self.win_width - Score.FONT_SIZE, self.win_height * Score.Y_INDENT_COEFF))
+        surf.blit(score, (Score.X_SCORE_COORD, self.win_height * Score.Y_INDENT_COEFF))
         surf.blit(self.score_text,
-                  (self.win_width - len(str(score)) * Score.FONT_SIZE // Score.FONT_PX_COEFF,
+                  (Score.X_SCORE_COORD - len(Score.SCORE_TEXT) * Score.FONT_SIZE // Score.FONT_SIZE_COEFF,
                    self.win_height * Score.Y_INDENT_COEFF))
 
     def get_score(self):
@@ -114,7 +115,7 @@ class Paddle(pygame.sprite.Sprite):
 
 class GameWindow:
     FPS = 60
-    N_BLOCKS = 5
+    N_BLOCKS = 10
     M_BLOCKS = 11
     COLLISION_EPSILON = 10
     LOSE = 0
@@ -184,7 +185,7 @@ class GameWindow:
     def blocks_placement(self):
         self.blocks = [
             Block(self, i * (Block.WIDTH + Block.INDENT), j * (Block.HEIGHT + Block.INDENT)) for j in
-            range(GameWindow.N_BLOCKS) for i in range(GameWindow.M_BLOCKS)]
+            range(0, GameWindow.N_BLOCKS) for i in range(1, GameWindow.M_BLOCKS)]
 
     def blocks_draw(self):
         for block in self.blocks:
