@@ -8,6 +8,7 @@ class Score:
     FONT_SIZE = 36
     SCORE_TEXT = "Score:"
     Y_INDENT_COEFF = 0.95
+    FONT_PX_COEFF = 4
 
     def __init__(self, window_width, window_height):
         self.score = 0
@@ -20,9 +21,10 @@ class Score:
 
     def draw(self, surf):
         score = self.font.render(str(self.score), True, (0, 255, 0))
+
         surf.blit(score, (self.win_width - Score.FONT_SIZE, self.win_height * Score.Y_INDENT_COEFF))
         surf.blit(self.score_text,
-                  (self.win_width - (len(Score.SCORE_TEXT)) * Score.FONT_SIZE,
+                  (self.win_width - len(str(score)) * Score.FONT_SIZE // Score.FONT_PX_COEFF,
                    self.win_height * Score.Y_INDENT_COEFF))
 
     def get_score(self):
@@ -110,21 +112,6 @@ class Paddle(pygame.sprite.Sprite):
         return self.height
 
 
-class EndGameWindow:
-    def __init__(self, game_state, score):
-        self.game_state = game_state
-        self.score = score
-        self.restart_btn_font = GameWindow.load_image("restart_button.png")
-
-
-    def draw(self):
-        self.running = True
-        while self.running:
-            pass
-
-
-
-
 class GameWindow:
     FPS = 60
     N_BLOCKS = 5
@@ -177,10 +164,10 @@ class GameWindow:
     def win_lost_detector(self):
         if not self.blocks:
             self.game_end()
-            EndGameWindow(GameWindow.WIN, self.score.get_score())
+            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.WIN).draw()
         if self.ball.rect.y > self.paddle.rect.y + self.paddle.rect.h:
             self.game_end()
-            EndGameWindow(GameWindow.LOSE, self.score.get_score())
+            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.LOSE).draw()
 
     def collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
@@ -265,7 +252,15 @@ class GameWindow:
 
 
 class Menu:
-    def __init__(self, width, height, screen, game_window):
+    FONT_SIZE = 36
+    TEMPLATE = "You {} With score:"
+    Y_INDENT_COEFF = 0.95
+    FONT_PX_COEFF = 3
+
+    def __init__(self, width, height, screen, game_window, score=None, end_state=None):
+        self.font = pygame.font.Font(None, Score.FONT_SIZE)
+        self.end_state = end_state
+        self.score = score
         self.width = width
         self.height = height
         self.screen = screen
@@ -287,28 +282,44 @@ class Menu:
         self.running = True
         while self.running:
             self.events_handler()
+
             self.screen.blit(self.background_font, self.background_font.get_rect())
             self.screen.blit(self.start_btn_font,
                              self.start_btn_rect)
             self.screen.blit(self.quit_btn_font, self.quit_btn_rect)
-
+            if self.score is not None and self.end_state is not None:
+                self.end_game_draw()
             pygame.display.update()
             pygame.display.flip()
 
     def close_menu(self):
         self.screen.fill((0, 0, 0))
+        self.end_state = None
+        self.score = None
         self.running = False
 
     def events_handler(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.close_menu()
+                sys.exit(0)
             if event.type == pygame.MOUSEBUTTONUP:
                 if self.start_btn_rect.collidepoint(*event.pos):
                     self.game_window.start_game()
                 elif self.quit_btn_rect.collidepoint(*event.pos):
                     self.close_menu()
                     sys.exit(0)
+
+    def end_game_draw(self):
+        score = self.font.render(str(self.score), True, (0, 255, 0))
+        text_state = "win" if self.end_state == GameWindow.WIN else "lose"
+        end_text = self.font.render(Menu.TEMPLATE.format(text_state), True, (0, 255, 0))
+        self.screen.blit(end_text,
+                         (0,
+                          self.height * Menu.Y_INDENT_COEFF))
+
+        self.screen.blit(score, (
+            len(str(end_text)) * Menu.FONT_SIZE // Menu.FONT_PX_COEFF, self.height * Score.Y_INDENT_COEFF))
 
 
 def main():
