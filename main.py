@@ -1,8 +1,32 @@
 import os
-import pygame_menu
 import pygame
 import sys
 from random import randint
+
+
+class Score:
+    FONT_SIZE = 36
+    SCORE_TEXT = "Score:"
+    Y_INDENT_COEFF = 0.95
+
+    def __init__(self, window_width, window_height):
+        self.score = 0
+        self.font = pygame.font.Font(None, Score.FONT_SIZE)
+        self.win_width, self.win_height = window_width, window_height
+        self.score_text = self.font.render(Score.SCORE_TEXT, True, (0, 255, 0))
+
+    def up_score(self):
+        self.score += 1
+
+    def draw(self, surf):
+        score = self.font.render(str(self.score), True, (0, 255, 0))
+        surf.blit(score, (self.win_width - Score.FONT_SIZE, self.win_height * Score.Y_INDENT_COEFF))
+        surf.blit(self.score_text,
+                  (self.win_width - (len(Score.SCORE_TEXT)) * Score.FONT_SIZE,
+                   self.win_height * Score.Y_INDENT_COEFF))
+
+    def get_score(self):
+        return self.score
 
 
 class Ball(pygame.sprite.Sprite):
@@ -54,6 +78,7 @@ class Paddle(pygame.sprite.Sprite):
     WIDTH = 90
     HEIGHT = 7
     SPEED = 10
+    Y_INDENT_COEFF = 0.9
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
@@ -86,15 +111,27 @@ class Paddle(pygame.sprite.Sprite):
 
 
 class EndGameWindow:
-    def __init__(self, game_window):
-        game_window.screen.fill((0, 0, 0))
-        game_window.running = False
+    def __init__(self, game_state, score):
+        self.game_state = game_state
+        self.score = score
+        self.restart_btn_font = GameWindow.load_image("restart_button.png")
+
+
+    def draw(self):
+        self.running = True
+        while self.running:
+            pass
+
+
 
 
 class GameWindow:
     FPS = 60
     N_BLOCKS = 5
     M_BLOCKS = 11
+    COLLISION_EPSILON = 10
+    LOSE = 0
+    WIN = 1
 
     def __init__(self, width, height, screen):
         self.width = width
@@ -103,25 +140,25 @@ class GameWindow:
         self.screen = screen
 
     def start_game(self):
-        self.opened_menu.clear()
+        self.score = Score(self.width, self.height)
+        self.opened_menu.close_menu()
         self.all_sprites = pygame.sprite.Group()
         self.running = True
         self.clock = pygame.time.Clock()
         self.paddle = Paddle(self)
-        self.paddle.set_pos(self.width // 2, 0.9 * self.height)
+        self.paddle.set_pos(self.width // 2, Paddle.Y_INDENT_COEFF * self.height)
         self.is_key_downed = False
         self.paddle_direction = 1
         self.ball = Ball(self)
         self.ball.set_pos(self.paddle.rect.x, self.paddle.rect.y - self.ball.radius * 2)
-
         self.ball_x_direction = self.ball_y_direction = 1
-        # block = Block(self)
         self.blocks_placement()
         while self.running:
             self.event_handler()
             if self.is_key_downed:
                 self.paddle.move_paddle(self.paddle_direction)
             self.screen.fill((0, 0, 0))
+            self.score.draw(self.screen)
             self.ball.update(self.ball_x_direction, self.ball_y_direction)
             self.paddle.draw(self.screen)
             self.ball.draw(self.screen)
@@ -130,7 +167,6 @@ class GameWindow:
             self.blocks_collision_handler(block_hit_index)
             self.blocks_draw()
             self.collision_handler()
-
             pygame.display.update()
             pygame.display.flip()
             self.clock.tick(GameWindow.FPS)
@@ -140,9 +176,11 @@ class GameWindow:
 
     def win_lost_detector(self):
         if not self.blocks:
-            EndGameWindow(self)
+            self.game_end()
+            EndGameWindow(GameWindow.WIN, self.score.get_score())
         if self.ball.rect.y > self.paddle.rect.y + self.paddle.rect.h:
-            EndGameWindow(self)
+            self.game_end()
+            EndGameWindow(GameWindow.LOSE, self.score.get_score())
 
     def collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
@@ -151,8 +189,6 @@ class GameWindow:
         r = self.ball.get_radius()
         if x + r >= self.width:
             self.ball_x_direction = -self.ball_x_direction
-        if y + r >= self.height:
-            self.ball_y_direction = -self.ball_x_direction
         if x - r <= 0:
             self.ball_x_direction = -self.ball_x_direction
         if y - r <= 0:
@@ -169,6 +205,7 @@ class GameWindow:
 
     def blocks_collision_handler(self, index):
         if index != -1:
+            self.score.up_score()
             block_rect = self.blocks.pop(index).rect
             self.collision_detector(block_rect)
 
@@ -182,7 +219,7 @@ class GameWindow:
         else:
             dy = rect.bottom - self.ball.rect.top
 
-        if abs(dx - dy) < 10:
+        if abs(dx - dy) < GameWindow.COLLISION_EPSILON:
             self.ball_x_direction, self.ball_y_direction = -self.ball_x_direction, -self.ball_y_direction
         elif dx > dy:
             self.ball_y_direction = -self.ball_y_direction
@@ -206,9 +243,13 @@ class GameWindow:
     def set_menu(self, menu):
         self.opened_menu = menu
 
+    def game_end(self):
+        self.screen.fill((0, 0, 0))
+        self.running = False
+
     @staticmethod
     def load_image(name, colorkey=None):
-        fullname = os.path.join('data', name)
+        fullname = os.path.join("data", name)
         if not os.path.isfile(fullname):
             print(f"Файл с изображением '{fullname}' не найден")
             sys.exit()
@@ -225,12 +266,49 @@ class GameWindow:
 
 class Menu:
     def __init__(self, width, height, screen, game_window):
-        menu = pygame_menu.Menu(height, width, "Arkanoid",
-                                theme=pygame_menu.themes.THEME_DARK, onclose=pygame_menu.events.EXIT
-                                )
-        game_window.set_menu(menu)
-        menu.add_button("Play", game_window.start_game)
-        menu.mainloop(screen)
+        self.width = width
+        self.height = height
+        self.screen = screen
+        self.game_window = game_window
+        self.game_window.set_menu(self)
+        self.background_font = GameWindow.load_image("menu_background.jpg")
+        self.start_btn_font = GameWindow.load_image("play_button.png")
+        self.start_btn_rect = pygame.Rect((self.width - self.start_btn_font.get_width()) // 2,
+                                          (self.height - self.start_btn_font.get_height()) // 2,
+                                          *self.start_btn_font.get_size())
+        self.quit_btn_font = GameWindow.load_image("quit_button.png")
+        self.quit_btn_rect = pygame.Rect((self.width - self.quit_btn_font.get_width()) // 2,
+                                         (self.height + self.quit_btn_font.get_height()) // 2,
+                                         *self.quit_btn_font.get_size())
+
+        self.draw()
+
+    def draw(self):
+        self.running = True
+        while self.running:
+            self.events_handler()
+            self.screen.blit(self.background_font, self.background_font.get_rect())
+            self.screen.blit(self.start_btn_font,
+                             self.start_btn_rect)
+            self.screen.blit(self.quit_btn_font, self.quit_btn_rect)
+
+            pygame.display.update()
+            pygame.display.flip()
+
+    def close_menu(self):
+        self.screen.fill((0, 0, 0))
+        self.running = False
+
+    def events_handler(self):
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.close_menu()
+            if event.type == pygame.MOUSEBUTTONUP:
+                if self.start_btn_rect.collidepoint(*event.pos):
+                    self.game_window.start_game()
+                elif self.quit_btn_rect.collidepoint(*event.pos):
+                    self.close_menu()
+                    sys.exit(0)
 
 
 def main():
