@@ -62,8 +62,8 @@ class Ball(pygame.sprite.Sprite):
 
 
 class Block(pygame.sprite.Sprite):
-    WIDTH = 60
-    HEIGHT = 30
+    WIDTH = 64
+    HEIGHT = 32
     INDENT = 10
 
     def __init__(self, game_window, x=0, y=0):
@@ -72,9 +72,11 @@ class Block(pygame.sprite.Sprite):
         self.height = Block.HEIGHT
 
         self.rect = pygame.Rect(x, y, self.width, self.height)
+        self.image = GameWindow.load_image("block" + str(randint(1, 6)) + ".png")
 
     def draw(self, surf):
-        pygame.draw.rect(surf, (255, 0, 0), self.rect)
+        # pygame.draw.rect(surf, (255, 0, 0), self.rect)
+        surf.blit(self.image, self.rect)
 
 
 class Paddle(pygame.sprite.Sprite):
@@ -115,8 +117,8 @@ class Paddle(pygame.sprite.Sprite):
 
 class GameWindow:
     FPS = 60
-    N_BLOCKS = 10
-    M_BLOCKS = 11
+    N_BLOCKS = 6
+    M_BLOCKS = 10
     COLLISION_EPSILON = 10
     LOSE = 0
     WIN = 1
@@ -126,6 +128,10 @@ class GameWindow:
         self.height = height
         self.opened_menu = None
         self.screen = screen
+        self.block_crashed_sound = pygame.mixer.Sound("data/block_crashed.mp3")
+        self.paddle_touch_sound = pygame.mixer.Sound("data/paddle_touch_sound.wav")
+        self.lose_sound = pygame.mixer.Sound("data/lose_sound.mp3")
+        self.win_sound = pygame.mixer.Sound("data/win_sound.wav")
 
     def start_game(self):
         self.score = Score(self.width, self.height)
@@ -159,19 +165,34 @@ class GameWindow:
             pygame.display.flip()
             self.clock.tick(GameWindow.FPS)
 
+    def play_block_crashed_effect(self):
+        self.block_crashed_sound.play()
+
+    def play_game_end_effect(self, state):
+        if state == self.WIN:
+            self.win_sound.play()
+        else:
+            self.lose_sound.play()
+
+    def play_paddle_touch_effect(self):
+        self.paddle_touch_sound.play()
+
     def get_window_size(self):
         return self.width, self.height
 
     def win_lost_detector(self):
         if not self.blocks:
+            self.play_game_end_effect(self.WIN)
             self.game_end()
             Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.WIN).draw()
         if self.ball.rect.y > self.paddle.rect.y + self.paddle.rect.h:
+            self.play_game_end_effect(self.LOSE)
             self.game_end()
             Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.LOSE).draw()
 
     def collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
+            self.play_paddle_touch_effect()
             self.collision_detector(self.paddle.rect)
         x, y = self.ball.get_pos()
         r = self.ball.get_radius()
@@ -193,6 +214,7 @@ class GameWindow:
 
     def blocks_collision_handler(self, index):
         if index != -1:
+            self.play_block_crashed_effect()
             self.score.up_score()
             block_rect = self.blocks.pop(index).rect
             self.collision_detector(block_rect)
@@ -276,6 +298,9 @@ class Menu:
         self.quit_btn_rect = pygame.Rect((self.width - self.quit_btn_font.get_width()) // 2,
                                          (self.height + self.quit_btn_font.get_height()) // 2,
                                          *self.quit_btn_font.get_size())
+        self.btn_select_sound = pygame.mixer.Sound("data/menu_selection_click.wav")
+
+        self.selected_btn = None
 
         self.draw()
 
@@ -294,6 +319,7 @@ class Menu:
             pygame.display.flip()
 
     def close_menu(self):
+
         self.screen.fill((0, 0, 0))
         self.end_state = None
         self.score = None
@@ -304,12 +330,31 @@ class Menu:
             if event.type == pygame.QUIT:
                 self.close_menu()
                 sys.exit(0)
+            if event.type == pygame.MOUSEMOTION:
+                start_btn_selected = self.start_btn_rect.collidepoint(*event.pos)
+
+                quit_btn_selected = self.quit_btn_rect.collidepoint(*event.pos)
+                # 0 - start button select 1 - quit button select
+                if start_btn_selected and self.selected_btn != 0:
+                    self.selected_btn = 0
+                    self.play_btn_selected_effect()
+                if quit_btn_selected and self.selected_btn != 1:
+                    self.selected_btn = 1
+                    self.play_btn_selected_effect()
+                if not start_btn_selected and not quit_btn_selected:
+                    self.selected_btn = None
+
             if event.type == pygame.MOUSEBUTTONUP:
                 if self.start_btn_rect.collidepoint(*event.pos):
                     self.game_window.start_game()
                 elif self.quit_btn_rect.collidepoint(*event.pos):
+
                     self.close_menu()
+
                     sys.exit(0)
+
+    def play_btn_selected_effect(self):
+        self.btn_select_sound.play()
 
     def end_game_draw(self):
         score = self.font.render(str(self.score), True, (0, 255, 0))
