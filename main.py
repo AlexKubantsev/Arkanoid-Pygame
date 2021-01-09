@@ -13,19 +13,19 @@ class Score:
 
     def __init__(self, window_width, window_height):
         self.score = 0
-        self.font = pygame.font.Font(None, Score.FONT_SIZE)
+        self.font = pygame.font.Font(None, self.FONT_SIZE)
         self.win_width, self.win_height = window_width, window_height
-        self.score_text = self.font.render(Score.SCORE_TEXT, True, (0, 255, 0))
+        self.score_text = self.font.render(self.SCORE_TEXT, True, (0, 255, 0))
 
     def up_score(self):
         self.score += 1
 
     def draw(self, surf):
         score = self.font.render(str(self.score), True, (0, 255, 0))
-        surf.blit(score, (Score.X_SCORE_COORD, self.win_height * Score.Y_INDENT_COEFF))
+        surf.blit(score, (self.X_SCORE_COORD, self.win_height * self.Y_INDENT_COEFF))
         surf.blit(self.score_text,
-                  (Score.X_SCORE_COORD - len(Score.SCORE_TEXT) * Score.FONT_SIZE // Score.FONT_SIZE_COEFF,
-                   self.win_height * Score.Y_INDENT_COEFF))
+                  (Score.X_SCORE_COORD - len(Score.SCORE_TEXT) * self.FONT_SIZE // self.FONT_SIZE_COEFF,
+                   self.win_height * self.Y_INDENT_COEFF))
 
     def get_score(self):
         return self.score
@@ -37,10 +37,9 @@ class Ball(pygame.sprite.Sprite):
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
-
-        self.radius = Ball.RADIUS
+        self.radius = self.RADIUS
         self.rect = pygame.Rect(0, 0, self.radius * 2, self.radius * 2)
-        self.speed = Ball.SPEED
+        self.speed = self.SPEED
 
     def draw(self, surf):
         pygame.draw.ellipse(surf, (0, 255, 0), self.rect)
@@ -67,8 +66,8 @@ class Block(pygame.sprite.Sprite):
 
     def __init__(self, game_window, x=0, y=0):
         super().__init__(game_window.all_sprites)
-        self.width = Block.WIDTH
-        self.height = Block.HEIGHT
+        self.width = self.WIDTH
+        self.height = self.HEIGHT
         self.rect = pygame.Rect(x, y, self.width, self.height)
         self.image = GameWindow.load_image("block" + str(randint(1, 6)) + ".png")
 
@@ -84,9 +83,9 @@ class Paddle(pygame.sprite.Sprite):
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
-        self.width, self.height = Paddle.WIDTH, Paddle.HEIGHT
+        self.width, self.height = self.WIDTH, self.HEIGHT
         self.rect = pygame.Rect(0, 0, self.width, self.height)
-        self.speed = Paddle.SPEED
+        self.speed = self.SPEED
         self.win_width, self.win_height = game_window.get_window_size()
 
     def move_paddle(self, direction):
@@ -132,6 +131,7 @@ class GameWindow:
         self.game_background = self.load_image("game_background.png")
 
     def start_game(self):
+        self.is_game_volumes_on = self.opened_menu.game_volumes_state()
         self.pause = False
         self.score = Score(self.width, self.height)
         self.all_sprites = pygame.sprite.Group()
@@ -145,9 +145,12 @@ class GameWindow:
         self.ball.set_pos(self.paddle.rect.x, self.paddle.rect.y - self.ball.radius * 2)
         self.ball_x_direction = self.ball_y_direction = 1
         self.blocks_placement()
+        pause_menu = PauseMenu(self.width, self.height, self.screen, self, self.opened_menu.volume_control)
+        self.set_menu(pause_menu)
         while self.running:
-            self.event_handler()
+            self.events_handler()
             if not self.pause:
+                self.is_game_volumes_on = self.opened_menu.game_volumes_state()
                 self.opened_menu.close_menu()
                 if self.is_key_downed:
                     self.paddle.move_paddle(self.paddle_direction)
@@ -166,19 +169,22 @@ class GameWindow:
                 pygame.display.flip()
                 self.clock.tick(GameWindow.FPS)
             else:
-                pause_menu = PauseMenu(self.width, self.height, self.screen, self)
+                pause_menu.draw()
 
     def play_block_crashed_effect(self):
-        self.block_crashed_sound.play()
+        if self.is_game_volumes_on:
+            self.block_crashed_sound.play()
 
     def play_game_end_effect(self, state):
-        if state == self.WIN:
-            self.win_sound.play()
-        else:
-            self.lose_sound.play()
+        if self.is_game_volumes_on:
+            if state == self.WIN:
+                self.win_sound.play()
+            else:
+                self.lose_sound.play()
 
     def play_paddle_touch_effect(self):
-        self.paddle_touch_sound.play()
+        if self.is_game_volumes_on:
+            self.paddle_touch_sound.play()
 
     def get_window_size(self):
         return self.width, self.height
@@ -187,11 +193,13 @@ class GameWindow:
         if not self.blocks:
             self.play_game_end_effect(self.WIN)
             self.game_end()
-            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.WIN).draw()
+            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.WIN,
+                 self.opened_menu.volume_control).draw()
         if self.ball.rect.y > self.paddle.rect.y + self.paddle.rect.h:
             self.play_game_end_effect(self.LOSE)
             self.game_end()
-            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.LOSE).draw()
+            Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.LOSE,
+                 self.opened_menu.volume_control).draw()
 
     def collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
@@ -234,14 +242,14 @@ class GameWindow:
             dy = self.ball.rect.bottom - rect.top
         else:
             dy = rect.bottom - self.ball.rect.top
-        if abs(dx - dy) < GameWindow.COLLISION_EPSILON:
+        if abs(dx - dy) < self.COLLISION_EPSILON:
             self.ball_x_direction, self.ball_y_direction = -self.ball_x_direction, -self.ball_y_direction
         elif dx > dy:
             self.ball_y_direction = -self.ball_y_direction
         elif dx < dy:
             self.ball_x_direction = -self.ball_x_direction
 
-    def event_handler(self):
+    def events_handler(self):
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
@@ -282,13 +290,49 @@ class GameWindow:
         return image
 
 
+class VolumeControl:
+    VOLUME_IMG_WIDTH = 64
+    VOLUME_IMG_HEIGHT = 64
+
+    def __init__(self, game_window, screen, up_btn_h):
+        self.screen = screen
+        self.width, self.height = game_window.get_window_size()
+        self.clicks = 0
+        self.mute_img = game_window.load_image("mute.png")
+        self.unmute_img = game_window.load_image("unmute.png")
+
+        self.volume_control_img_rect = pygame.Rect(self.width // 2 - self.VOLUME_IMG_WIDTH // 2,
+                                                   self.height // 2 - up_btn_h - self.VOLUME_IMG_HEIGHT,
+                                                   self.VOLUME_IMG_WIDTH,
+                                                   self.VOLUME_IMG_HEIGHT)
+
+    def draw(self):
+        if self.clicks % 2 == 0:
+            self.screen.blit(self.mute_img, self.volume_control_img_rect)
+        else:
+            self.screen.blit(self.unmute_img, self.volume_control_img_rect)
+
+    def click_handler(self):
+        self.clicks += 1
+        self.clicks = self.clicks % 2
+
+    def is_volume_on(self):
+        return self.clicks % 2 == 0
+
+    def is_point_in(self, x, y):
+        return self.volume_control_img_rect.collidepoint(x, y)
+
+
 class Menu:
     FONT_SIZE = 36
     TEMPLATE = "You {} With score:"
     Y_INDENT_COEFF = 0.95
     FONT_PX_COEFF = 3
+    START_BUTTON = 0
+    QUIT_BUTTON = 1
+    MUTE_UNMUTE_BUTTON = 2
 
-    def __init__(self, width, height, screen, game_window, score=None, end_state=None):
+    def __init__(self, width, height, screen, game_window, score=None, end_state=None, volume_control=None):
         self.font = pygame.font.Font(None, Score.FONT_SIZE)
         self.end_state = end_state
         self.score = score
@@ -296,7 +340,6 @@ class Menu:
         self.height = height
         self.screen = screen
         self.game_window = game_window
-        self.game_window.set_menu(self)
         self.background_font = GameWindow.load_image("menu_background.png")
         self.start_btn_font = GameWindow.load_image("play_button.png")
         self.start_btn_rect = pygame.Rect((self.width - self.start_btn_font.get_width()) // 2,
@@ -308,14 +351,19 @@ class Menu:
                                          *self.quit_btn_font.get_size())
         self.btn_select_sound = pygame.mixer.Sound("data/menu_selection_click.wav")
         self.selected_btn = None
-        self.draw()
+        if volume_control is None:
+            self.volume_control = VolumeControl(self.game_window, self.screen, self.start_btn_font.get_height())
+        else:
+            self.volume_control = volume_control
 
     def draw(self):
         self.running = True
+        self.game_window.set_menu(self)
         while self.running:
             self.screen.fill((0, 0, 0))
             self.events_handler()
             self.screen.blit(self.background_font, self.background_font.get_rect())
+            self.volume_control.draw()
             self.screen.blit(self.start_btn_font,
                              self.start_btn_rect)
             self.screen.blit(self.quit_btn_font, self.quit_btn_rect)
@@ -323,6 +371,9 @@ class Menu:
                 self.game_score_draw()
             pygame.display.update()
             pygame.display.flip()
+
+    def game_volumes_state(self):
+        return self.volume_control.is_volume_on()
 
     def close_menu(self):
         self.screen.fill((0, 0, 0))
@@ -338,14 +389,17 @@ class Menu:
             if event.type == pygame.MOUSEMOTION:
                 start_btn_selected = self.start_btn_rect.collidepoint(*event.pos)
                 quit_btn_selected = self.quit_btn_rect.collidepoint(*event.pos)
-                # 0 - start button select 1 - quit button select
-                if start_btn_selected and self.selected_btn != 0:
-                    self.selected_btn = 0
+                mute_unmute_btn_selected = self.volume_control.is_point_in(*event.pos)
+                if start_btn_selected and self.selected_btn != self.START_BUTTON:
+                    self.selected_btn = self.START_BUTTON
                     self.play_btn_selected_effect()
-                if quit_btn_selected and self.selected_btn != 1:
-                    self.selected_btn = 1
+                if quit_btn_selected and self.selected_btn != self.QUIT_BUTTON:
+                    self.selected_btn = self.QUIT_BUTTON
                     self.play_btn_selected_effect()
-                if not start_btn_selected and not quit_btn_selected:
+                if mute_unmute_btn_selected and self.selected_btn != self.MUTE_UNMUTE_BUTTON:
+                    self.selected_btn = self.MUTE_UNMUTE_BUTTON
+                    self.play_btn_selected_effect()
+                if not start_btn_selected and not quit_btn_selected and not mute_unmute_btn_selected:
                     self.selected_btn = None
             if event.type == pygame.MOUSEBUTTONUP:
                 if self.start_btn_rect.collidepoint(*event.pos):
@@ -353,9 +407,12 @@ class Menu:
                 elif self.quit_btn_rect.collidepoint(*event.pos):
                     self.close_menu()
                     sys.exit(0)
+                elif self.volume_control.is_point_in(*event.pos):
+                    self.volume_control.click_handler()
 
     def play_btn_selected_effect(self):
-        self.btn_select_sound.play()
+        if self.volume_control.is_volume_on():
+            self.btn_select_sound.play()
 
     def game_score_draw(self):
         score = self.font.render(str(self.score), True, (0, 255, 0))
@@ -369,7 +426,7 @@ class Menu:
 
 
 class PauseMenu(Menu):
-    def __init__(self, width, height, screen, game_window, score=None, end_state=None):
+    def __init__(self, width, height, screen, game_window, volume_control, score=None, end_state=None):
         self.font = pygame.font.Font(None, Score.FONT_SIZE)
         self.end_state = end_state
         self.score = score
@@ -377,7 +434,6 @@ class PauseMenu(Menu):
         self.height = height
         self.screen = screen
         self.game_window = game_window
-        self.game_window.set_menu(self)
         self.background_font = GameWindow.load_image("game_background.png")
         self.start_btn_font = GameWindow.load_image("play_button.png")
         self.start_btn_rect = pygame.Rect((self.width - self.start_btn_font.get_width()) // 2,
@@ -389,7 +445,7 @@ class PauseMenu(Menu):
                                          *self.quit_btn_font.get_size())
         self.btn_select_sound = pygame.mixer.Sound("data/menu_selection_click.wav")
         self.selected_btn = None
-        self.draw()
+        self.volume_control = volume_control
 
     def events_handler(self):
         for event in pygame.event.get():
@@ -399,16 +455,18 @@ class PauseMenu(Menu):
             if event.type == pygame.MOUSEMOTION:
                 start_btn_selected = self.start_btn_rect.collidepoint(*event.pos)
                 quit_btn_selected = self.quit_btn_rect.collidepoint(*event.pos)
-                # 0 - start button select 1 - quit button select
-                if start_btn_selected and self.selected_btn != 0:
-                    self.selected_btn = 0
+                mute_unmute_btn_selected = self.volume_control.is_point_in(*event.pos)
+                if start_btn_selected and self.selected_btn != self.START_BUTTON:
+                    self.selected_btn = self.START_BUTTON
                     self.play_btn_selected_effect()
-                if quit_btn_selected and self.selected_btn != 1:
-                    self.selected_btn = 1
+                if quit_btn_selected and self.selected_btn != self.QUIT_BUTTON:
+                    self.selected_btn = self.QUIT_BUTTON
                     self.play_btn_selected_effect()
-                if not start_btn_selected and not quit_btn_selected:
+                if mute_unmute_btn_selected and self.selected_btn != self.MUTE_UNMUTE_BUTTON:
+                    self.selected_btn = self.MUTE_UNMUTE_BUTTON
+                    self.play_btn_selected_effect()
+                if not start_btn_selected and not quit_btn_selected and not mute_unmute_btn_selected:
                     self.selected_btn = None
-
             if event.type == pygame.MOUSEBUTTONUP:
                 if self.start_btn_rect.collidepoint(*event.pos):
                     self.game_window.pause_handler()
@@ -417,7 +475,8 @@ class PauseMenu(Menu):
                 elif self.quit_btn_rect.collidepoint(*event.pos):
                     self.close_menu()
                     sys.exit(0)
-
+                elif self.volume_control.is_point_in(*event.pos):
+                    self.volume_control.click_handler()
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 self.game_window.pause_handler()
                 self.screen.fill((0, 0, 0))
@@ -429,7 +488,7 @@ def main():
     size = width, height = 800, 600
     screen = pygame.display.set_mode(size)
     game_wnd = GameWindow(width, height, screen)
-    Menu(width, height, screen, game_wnd)
+    Menu(width, height, screen, game_wnd).draw()
 
 
 if __name__ == "__main__":
