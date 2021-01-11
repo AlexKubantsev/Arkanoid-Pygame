@@ -34,6 +34,8 @@ class Score:
 class Ball(pygame.sprite.Sprite):
     RADIUS = 10
     SPEED = 5
+    DELTA_SPEED = 0.1
+    MAX_SPEED = 30
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
@@ -45,6 +47,11 @@ class Ball(pygame.sprite.Sprite):
     def up_temperature(self, dt):
         if self.get_blue() > 0 and self.get_green() > 0:
             self.color = (self.color[0], (self.get_green() - dt) % 255, (self.get_blue() - dt) % 255)
+
+    def up_speed(self):
+        self.speed += self.DELTA_SPEED
+        if self.speed > self.MAX_SPEED:
+            self.speed = self.MAX_SPEED
 
     def get_red(self):
         return self.color[0]
@@ -74,9 +81,9 @@ class Ball(pygame.sprite.Sprite):
 
 
 class Block(pygame.sprite.Sprite):
-    WIDTH = 64
-    HEIGHT = 32
-    INDENT = 10
+    WIDTH = 32
+    HEIGHT = 16
+    INDENT = 3
     BLOCK_TEMPERATURE_IMPACT = 3
 
     def __init__(self, game_window, x=0, y=0):
@@ -84,7 +91,7 @@ class Block(pygame.sprite.Sprite):
         self.width = self.WIDTH
         self.height = self.HEIGHT
         self.rect = pygame.Rect(x, y, self.width, self.height)
-        self.image = GameWindow.load_image("block" + str(randint(1, 6)) + ".png")
+        self.image = GameWindow.load_image("block" + str(randint(1, 20)) + ".png")
 
     def draw(self, surf):
         surf.blit(self.image, self.rect)
@@ -97,6 +104,7 @@ class Paddle(pygame.sprite.Sprite):
     Y_INDENT_COEFF = 0.9
     PADDLE_TEMPERATURE_IMPACT = 1
     COLOR = (192, 192, 192)
+    SYNC_WITH_BALL_DELTA_SPEED = 0.5
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
@@ -110,6 +118,9 @@ class Paddle(pygame.sprite.Sprite):
             self.rect.x += direction * self.speed
         elif direction > 0 and self.rect.x < self.win_width - self.width:
             self.rect.x += direction * self.speed
+
+    def up_speed(self):
+        self.speed += self.SYNC_WITH_BALL_DELTA_SPEED
 
     def draw(self, surf):
         pygame.draw.rect(surf, self.COLOR, self.rect)
@@ -130,8 +141,8 @@ class Paddle(pygame.sprite.Sprite):
 
 class GameWindow:
     FPS = 60
-    N_BLOCKS = 6
-    M_BLOCKS = 10
+    N_BLOCKS = 11
+    M_BLOCKS = 19
     COLLISION_EPSILON = 10
     LOSE = 0
     WIN = 1
@@ -173,26 +184,30 @@ class GameWindow:
         while self.running:
             self.events_handler()
             if not self.pause:
-                self.is_game_volumes_on = self.opened_menu.game_volumes_state()
                 self.opened_menu.close_menu()
                 if self.is_key_downed:
                     self.paddle.move_paddle(self.paddle_direction)
-                self.screen.fill((0, 0, 0))
-                self.screen.blit(self.game_background, self.game_background.get_rect())
-                self.score.draw(self.screen)
-                self.ball.update(self.ball_x_direction, self.ball_y_direction)
-                self.paddle.draw(self.screen)
-                self.ball.draw(self.screen)
+                self.display_objects_update()
                 self.win_lost_detector()
+                self.paddle_and_walls_collision_handler()
                 block_hit_index = self.ball.rect.collidelist(list(map(lambda x: x.rect, self.blocks)))
                 self.blocks_collision_handler(block_hit_index)
-                self.blocks_draw()
-                self.collision_handler()
-                pygame.display.update()
-                pygame.display.flip()
-                self.clock.tick(GameWindow.FPS)
+
             else:
                 self.pause_menu.draw()
+
+    def display_objects_update(self):
+        self.is_game_volumes_on = self.opened_menu.game_volumes_state()
+        self.screen.fill((0, 0, 0))
+        self.screen.blit(self.game_background, self.game_background.get_rect())
+        self.score.draw(self.screen)
+        self.ball.update(self.ball_x_direction, self.ball_y_direction)
+        self.paddle.draw(self.screen)
+        self.ball.draw(self.screen)
+        self.blocks_draw()
+        pygame.display.update()
+        pygame.display.flip()
+        self.clock.tick(GameWindow.FPS)
 
     def play_block_crashed_effect(self):
         if self.is_game_volumes_on:
@@ -224,11 +239,14 @@ class GameWindow:
             Menu(self.width, self.height, self.screen, self, self.score.get_score(), self.LOSE,
                  self.opened_menu.volume_control).draw()
 
-    def collision_handler(self):
+    def paddle_and_walls_collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
             self.ball.up_temperature(Paddle.PADDLE_TEMPERATURE_IMPACT)
             self.play_paddle_touch_effect()
             self.collision_detector(self.paddle.rect)
+        self.wall_direction_handler()
+
+    def wall_direction_handler(self):
         x, y = self.ball.get_pos()
         r = self.ball.get_radius()
         if x + r >= self.width:
@@ -241,7 +259,7 @@ class GameWindow:
     def blocks_placement(self):
         self.blocks = [
             Block(self, i * (Block.WIDTH + Block.INDENT), j * (Block.HEIGHT + Block.INDENT)) for j in
-            range(0, GameWindow.N_BLOCKS) for i in range(1, GameWindow.M_BLOCKS)]
+            range(GameWindow.N_BLOCKS) for i in range(GameWindow.M_BLOCKS)]
 
     def blocks_draw(self):
         for block in self.blocks:
@@ -252,6 +270,8 @@ class GameWindow:
 
     def blocks_collision_handler(self, index):
         if index != -1:
+            self.paddle.up_speed()
+            self.ball.up_speed()
             self.ball.up_temperature(Block.BLOCK_TEMPERATURE_IMPACT)
             self.play_block_crashed_effect()
             self.score.up_score()
