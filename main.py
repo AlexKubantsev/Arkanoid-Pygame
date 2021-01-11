@@ -147,23 +147,29 @@ class GameWindow:
         self.win_sound = pygame.mixer.Sound("data/win_sound.wav")
         self.game_background = self.load_image("game_background.png")
 
-    def start_game(self):
+    def ui_init(self):
         self.is_game_volumes_on = self.opened_menu.game_volumes_state()
         self.pause = False
         self.score = Score(self.width, self.height)
-        self.all_sprites = pygame.sprite.Group()
-        self.running = True
+        self.pause_menu = PauseMenu(self.width, self.height, self.screen, self, self.opened_menu.volume_control)
+        self.set_menu(self.pause_menu)
+        self.is_key_downed = False
         self.clock = pygame.time.Clock()
+
+    def game_objects_init(self):
+        self.all_sprites = pygame.sprite.Group()
         self.paddle = Paddle(self)
         self.paddle.set_pos(self.width // 2, Paddle.Y_INDENT_COEFF * self.height)
-        self.is_key_downed = False
         self.paddle_direction = 1
         self.ball = Ball(self)
         self.ball.set_pos(self.paddle.rect.x, self.paddle.rect.y - self.ball.radius * 2)
         self.ball_x_direction = self.ball_y_direction = 1
         self.blocks_placement()
-        pause_menu = PauseMenu(self.width, self.height, self.screen, self, self.opened_menu.volume_control)
-        self.set_menu(pause_menu)
+
+    def start_game(self):
+        self.ui_init()
+        self.game_objects_init()
+        self.running = True
         while self.running:
             self.events_handler()
             if not self.pause:
@@ -186,7 +192,7 @@ class GameWindow:
                 pygame.display.flip()
                 self.clock.tick(GameWindow.FPS)
             else:
-                pause_menu.draw()
+                self.pause_menu.draw()
 
     def play_block_crashed_effect(self):
         if self.is_game_volumes_on:
