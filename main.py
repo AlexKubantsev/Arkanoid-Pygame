@@ -39,10 +39,24 @@ class Ball(pygame.sprite.Sprite):
         super().__init__(game_window.all_sprites)
         self.radius = self.RADIUS
         self.rect = pygame.Rect(0, 0, self.radius * 2, self.radius * 2)
+        self.color = (255, 255, 255)
         self.speed = self.SPEED
 
+    def up_temperature(self, dt):
+        if self.get_blue() > 0 and self.get_green() > 0:
+            self.color = (self.color[0], (self.get_green() - dt) % 255, (self.get_blue() - dt) % 255)
+
+    def get_red(self):
+        return self.color[0]
+
+    def get_blue(self):
+        return self.color[1]
+
+    def get_green(self):
+        return self.color[2]
+
     def draw(self, surf):
-        pygame.draw.ellipse(surf, (0, 255, 0), self.rect)
+        pygame.draw.ellipse(surf, self.color, self.rect)
 
     def set_pos(self, x, y):
         self.rect.x = x
@@ -63,6 +77,7 @@ class Block(pygame.sprite.Sprite):
     WIDTH = 64
     HEIGHT = 32
     INDENT = 10
+    BLOCK_TEMPERATURE_IMPACT = 3
 
     def __init__(self, game_window, x=0, y=0):
         super().__init__(game_window.all_sprites)
@@ -80,6 +95,8 @@ class Paddle(pygame.sprite.Sprite):
     HEIGHT = 7
     SPEED = 10
     Y_INDENT_COEFF = 0.9
+    PADDLE_TEMPERATURE_IMPACT = 1
+    COLOR = (192, 192, 192)
 
     def __init__(self, game_window):
         super().__init__(game_window.all_sprites)
@@ -95,7 +112,7 @@ class Paddle(pygame.sprite.Sprite):
             self.rect.x += direction * self.speed
 
     def draw(self, surf):
-        pygame.draw.rect(surf, (255, 0, 0), self.rect)
+        pygame.draw.rect(surf, self.COLOR, self.rect)
 
     def set_pos(self, x, y):
         self.rect.x = x
@@ -203,6 +220,7 @@ class GameWindow:
 
     def collision_handler(self):
         if self.ball.rect.colliderect(self.paddle.rect) and self.ball_y_direction > 0:
+            self.ball.up_temperature(Paddle.PADDLE_TEMPERATURE_IMPACT)
             self.play_paddle_touch_effect()
             self.collision_detector(self.paddle.rect)
         x, y = self.ball.get_pos()
@@ -228,6 +246,7 @@ class GameWindow:
 
     def blocks_collision_handler(self, index):
         if index != -1:
+            self.ball.up_temperature(Block.BLOCK_TEMPERATURE_IMPACT)
             self.play_block_crashed_effect()
             self.score.up_score()
             block_rect = self.blocks.pop(index).rect
@@ -325,7 +344,7 @@ class VolumeControl:
 
 class Menu:
     FONT_SIZE = 36
-    TEMPLATE = "You {} With score:"
+    TEMPLATE = "You {} with score:"
     Y_INDENT_COEFF = 0.95
     FONT_PX_COEFF = 3
     START_BUTTON = 0
