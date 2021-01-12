@@ -421,7 +421,6 @@ class GameWindow:
                     self.is_ball_static = False
                 elif event.key == pygame.K_ESCAPE:
                     self.pause_handler()
-                    self.is_ball_static = False
             if event.type == pygame.KEYUP:
                 self.is_key_downed = False
 
