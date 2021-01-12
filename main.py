@@ -335,7 +335,10 @@ class GameWindow:
             Menu(self.width, self.height, self.screen,
                  self, self.score.get_score(), self.WIN,
                  self.opened_menu.volume_control).draw()
-        if self.ball.rect.y > self.paddle.rect.y + self.paddle.rect.h:
+        ball_y = self.ball.get_pos()[1]
+        paddle_y = self.paddle.get_pos()[1]
+
+        if ball_y > paddle_y + self.paddle.get_height():
             self.ball.decrease_lifes()
 
             if self.ball.get_lives() <= 0:
