@@ -28,7 +28,7 @@ class Bonus:
         current_time = dt.datetime.now()
         if self.start_bonus_showing_time is None \
                 and self.is_bonus_can_get(self.N_BLOCKS_FOR_GET_INCR_PLATFORM)\
-                and self.ball.get_lives() >= Ball.STANDART_LIFES:
+                and self.ball.get_lifes() >= Ball.STANDART_LIFES:
             self.paddle.increase_width()
             self.paddle.set_color(0, 0, 0)
             self.ball.set_color(0, 0, 0)
@@ -39,10 +39,10 @@ class Bonus:
         elif self.start_bonus_showing_time is not None and \
                 (current_time -
                  self.start_bonus_showing_time).seconds <= self.BONUS_SHOWING_TIME \
-                and self.ball.get_lives() >= Ball.STANDART_LIFES:
+                and self.ball.get_lifes() >= Ball.STANDART_LIFES:
             self.paddle.gradient_effect()
             self.ball.gradient_effect()
-        elif self.ball.get_lives() < Ball.STANDART_LIFES:
+        elif self.ball.get_lifes() < Ball.STANDART_LIFES:
             self.paddle.set_color(*Paddle.STANDART_COLOR)
             self.ball.set_color(*Ball.STANDART_COLOR)
             self.paddle.set_width(Paddle.WIDTH)
@@ -68,7 +68,7 @@ class Bonus:
                  self.start_bonus_showing_time).seconds <= self.BONUS_SHOWING_TIME:
             self.paddle.gradient_effect()
             self.ball.gradient_effect()
-        elif self.ball.get_lives() < Ball.STANDART_LIFES:
+        elif self.ball.get_lifes() < Ball.STANDART_LIFES:
             self.paddle.set_color(*Paddle.STANDART_COLOR)
             self.ball.set_color(*Ball.STANDART_COLOR)
             self.paddle.set_width(Paddle.WIDTH)
@@ -125,7 +125,7 @@ class Ball(pygame.sprite.Sprite):
         self.speed = self.SPEED
         self.color = self.STANDART_COLOR
         self.font = pygame.font.Font(None, self.FONT_SIZE)
-        self.lives = self.STANDART_LIFES
+        self.lifes = self.STANDART_LIFES
         self.is_ball_static = True
         self.x_direction = self.y_direction = 1
 
@@ -160,14 +160,14 @@ class Ball(pygame.sprite.Sprite):
         pygame.draw.ellipse(surf, self.color, self.rect)
 
     def decrease_lifes(self):
-        self.lives -= 1
+        self.lifes -= 1
 
     def increase_lifes(self):
-        self.lives += 1
+        self.lifes += 1
 
     def draw_lifes(self, surf):
         lifes_count_text = self.font.render(
-            self.LIVES_TEMPLATE.format(str(self.lives)),
+            self.LIVES_TEMPLATE.format(str(self.lifes)),
             True,
             (0, 255, 0))
         surf.blit(lifes_count_text, (0, self.win_height * self.Y_INDENT_COEFF))
@@ -175,8 +175,8 @@ class Ball(pygame.sprite.Sprite):
     def gradient_effect(self):
         self.color = (randint(50, 255), randint(50, 255), randint(50, 255))
 
-    def get_lives(self):
-        return self.lives
+    def get_lifes(self):
+        return self.lifes
 
     def set_color(self, r, g, b):
         self.color = (r, g, b)
@@ -400,7 +400,7 @@ class GameWindow:
         if ball_y > paddle_y + self.paddle.get_height():
             self.ball.decrease_lifes()
 
-            if self.ball.get_lives() <= 0:
+            if self.ball.get_lifes() <= 0:
                 self.play_game_end_effect(self.LOSE)
                 self.game_end()
                 Menu(self.width, self.height, self.screen,
