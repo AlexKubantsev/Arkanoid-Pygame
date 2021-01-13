@@ -28,7 +28,7 @@ class Bonus:
         current_time = dt.datetime.now()
         if self.start_bonus_showing_time is None \
                 and self.is_bonus_can_get(self.N_BLOCKS_FOR_GET_INCR_PLATFORM)\
-                and self.ball.get_lives() == Ball.STANDART_LIFES:
+                and self.ball.get_lives() >= Ball.STANDART_LIFES:
             self.paddle.increase_width()
             self.paddle.set_color(0, 0, 0)
             self.ball.set_color(0, 0, 0)
@@ -39,7 +39,33 @@ class Bonus:
         elif self.start_bonus_showing_time is not None and \
                 (current_time -
                  self.start_bonus_showing_time).seconds <= self.BONUS_SHOWING_TIME \
-                and self.ball.get_lives() == Ball.STANDART_LIFES:
+                and self.ball.get_lives() >= Ball.STANDART_LIFES:
+            self.paddle.gradient_effect()
+            self.ball.gradient_effect()
+        elif self.ball.get_lives() < Ball.STANDART_LIFES:
+            self.paddle.set_color(*Paddle.STANDART_COLOR)
+            self.ball.set_color(*Ball.STANDART_COLOR)
+            self.paddle.set_width(Paddle.WIDTH)
+            self.start_bonus_showing_time = None
+        else:
+            self.paddle.set_color(*Paddle.STANDART_COLOR)
+            self.ball.set_color(*Ball.STANDART_COLOR)
+            self.start_bonus_showing_time = None
+
+    def try_get_life(self):
+        current_time = dt.datetime.now()
+        if self.start_bonus_showing_time is None \
+                and self.is_bonus_can_get(self.n_blocks * self.m_blocks//2):
+            self.ball.increase_lifes()
+            self.paddle.set_color(0, 0, 0)
+            self.ball.set_color(0, 0, 0)
+            self.paddle.gradient_effect()
+            self.ball.gradient_effect()
+            self.start_bonus_showing_time = current_time
+
+        elif self.start_bonus_showing_time is not None and \
+                (current_time -
+                 self.start_bonus_showing_time).seconds <= self.BONUS_SHOWING_TIME:
             self.paddle.gradient_effect()
             self.ball.gradient_effect()
         elif self.ball.get_lives() < Ball.STANDART_LIFES:
@@ -135,6 +161,9 @@ class Ball(pygame.sprite.Sprite):
 
     def decrease_lifes(self):
         self.lives -= 1
+
+    def increase_lifes(self):
+        self.lives += 1
 
     def draw_lifes(self, surf):
         lifes_count_text = self.font.render(
@@ -306,6 +335,7 @@ class GameWindow:
 
     def bonus_get_handler(self):
         self.bonus.try_get_incr_platform()
+        self.bonus.try_get_life()
 
     def start_game(self):
         self.game_objects_initial()
@@ -425,6 +455,7 @@ class GameWindow:
             self.collision_detector(block.rect)
 
     def collision_detector(self, rect):
+
         if self.ball.get_x_direction() > 0:
             dx = self.ball.rect.right - rect.left
         else:
