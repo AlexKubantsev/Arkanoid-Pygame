@@ -148,8 +148,8 @@ class Ball(pygame.sprite.Sprite):
 
         centering_x = paddle_x + (paddle_width -
                                   self.get_radius())//2
-        centering_y = paddle_y - paddle_height -\
-            self.get_radius()
+        centering_y = paddle_y -\
+            self.get_radius() * 2
         self.set_pos(centering_x, centering_y)
         self.set_static(True)
 
