@@ -132,7 +132,7 @@ class Paddle(pygame.sprite.Sprite):
     HEIGHT = 7
     SPEED = 10
     Y_INDENT_COEFF = 0.9
-    BONUS_WIDTH_INCREASE = 150
+    BONUS_WIDTH_INCREASE = 75
     STANDART_COLOR = (192, 192, 192)
 
     def __init__(self, game_window):
@@ -193,6 +193,7 @@ class GameWindow:
     LOSE = 0
     WIN = 1
     BONUS_SHOWING_TIME = 5
+    N_BLOCKS_FOR_GET_INCR_PLATFORM = 20
 
     def __init__(self, width, height, screen):
         self.width = width
@@ -234,10 +235,17 @@ class GameWindow:
                           paddle_y - self.ball.radius * 2)
         self.ball_x_direction = self.ball_y_direction = 1
 
-    def bonus_get_handler(self):
+    def is_bonus_can_get(self, n):
+        is_blocks_crashed = self.N_BLOCKS * \
+            self.M_BLOCKS - len(self.blocks) > 0
+        is_n_blocks_crashed = (
+            self.N_BLOCKS * self.M_BLOCKS - len(self.blocks)) % n == 0
+        return is_blocks_crashed and is_n_blocks_crashed
+
+    def try_get_incr_platform(self):
         current_time = dt.datetime.now()
         if self.start_bonus_showing_time is None \
-                and len(self.blocks) == self.N_BLOCKS * self.M_BLOCKS//2\
+                and self.is_bonus_can_get(self.N_BLOCKS_FOR_GET_INCR_PLATFORM)\
                 and self.ball.get_lives() == Ball.STANDART_LIFES:
             self.bonus.draw(self.screen, "INCREASING THE PLATFORM")
             self.paddle.increase_width()
@@ -262,6 +270,9 @@ class GameWindow:
             self.paddle.set_color(*Paddle.STANDART_COLOR)
             self.ball.set_color(*Ball.STANDART_COLOR)
 
+    def bonus_get_handler(self):
+        self.try_get_incr_platform()
+
     def start_game(self):
         self.ui_initial()
         self.game_objects_initial()
@@ -285,6 +296,9 @@ class GameWindow:
                 self.pause_menu.draw()
 
     def ball_rebirth(self):
+        new_paddle_x = (self.width - self.paddle.get_width())//2
+        new_paddle_y = self.paddle.get_pos()[1]
+        self.paddle.set_pos(new_paddle_x, new_paddle_y)
         x_paddle, y_paddle = self.paddle.get_pos()
         paddle_center_x = x_paddle + (self.paddle.get_width() -
                                       self.ball.get_radius())//2
