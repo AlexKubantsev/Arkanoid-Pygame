@@ -503,7 +503,6 @@ class GameWindow:
         for i in range(self.M_BLOCKS):
             for j in range(self.N_BLOCKS):
                 if (i, j) in self.IRON_BLOCKS_COORDS:
-                    print(i, j)
                     self.blocks.append(IronBlock(
                         self.all_sprites, i * (Block.WIDTH + Block.INDENT),
                         j * (Block.HEIGHT + Block.INDENT)))
