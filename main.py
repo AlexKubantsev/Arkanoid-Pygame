@@ -358,9 +358,12 @@ class GameWindow:
                           (0, N_BLOCKS - 1),
                           (M_BLOCKS - 1, N_BLOCKS - 1),
                           (M_BLOCKS - 1, 0),
-                          (M_BLOCKS//2 - 1, N_BLOCKS // 2),
-                          (M_BLOCKS // 2, N_BLOCKS // 2),
-                          (M_BLOCKS//2 + 1, N_BLOCKS//2)
+                          (M_BLOCKS//2 - 1, N_BLOCKS // 2 - 1),
+                          (M_BLOCKS // 2, N_BLOCKS // 2 - 1),
+                          (M_BLOCKS//2 + 1, N_BLOCKS//2 - 1),
+                          (M_BLOCKS//2 - 1, N_BLOCKS - 1),
+                          (M_BLOCKS//2, N_BLOCKS - 1),
+                          (M_BLOCKS//2 + 1, N_BLOCKS - 1)
                           ]
     CONCRETE_BLOCK_FREQ = 10
 
