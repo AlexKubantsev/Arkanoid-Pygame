@@ -281,7 +281,7 @@ class Paddle(pygame.sprite.Sprite):
     HEIGHT = 7
     SPEED = 10
     Y_INDENT_COEFF = 0.9
-    BONUS_WIDTH_INCREASE = 75
+    BONUS_WIDTH_INCREASE = 30
     STANDART_COLOR = (192, 192, 192)
 
     def __init__(self, window_sizes, all_sprites):
