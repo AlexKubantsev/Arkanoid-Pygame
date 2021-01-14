@@ -237,6 +237,35 @@ class Block(pygame.sprite.Sprite):
             self.block_crashed_sound.play()
 
 
+class ConcreteBlock(Block):
+    def __init__(self, all_sprites, hardness=1, x=0, y=0):
+        super().__init__(all_sprites)
+        self.width = self.WIDTH
+        self.height = self.HEIGHT
+        self.rect = pygame.Rect(x, y, self.width, self.height)
+        self.image = GameWindow.load_image(
+            "block" + str(randint(1, 6)) + ".png")
+        self.block_crashed_sound = pygame.mixer.Sound("data/block_crashed.mp3")
+        self.block_hit_sound = pygame.mixer.Sound("data/rock_hit.mp3")
+        self.hardness = hardness
+
+    def play_crashed_effect(self, is_game_volumes_on):
+        if is_game_volumes_on and self.hardness > 0:
+            self.block_hit_sound.play()
+        elif is_game_volumes_on:
+            self.block_crashed_sound.play()
+
+    def block_hitted(self):
+        self.image = GameWindow.load_image("block_hitted.png")
+        self.decrease_hardness()
+
+    def decrease_hardness(self):
+        self.hardness -= 1
+
+    def get_hardness(self):
+        return self.hardness
+
+
 class Paddle(pygame.sprite.Sprite):
     WIDTH = 90
     HEIGHT = 7
@@ -315,6 +344,8 @@ class GameWindow:
     FPS = 60
     N_BLOCKS = 8
     M_BLOCKS = 18
+
+    CONCRETE_BLOCK_FREQ = 10
 
     LOSE = 0
     WIN = 1
@@ -451,13 +482,17 @@ class GameWindow:
             self.ball.invert_y_direction()
 
     def blocks_placement(self):
-        self.blocks = [
-            Block(self.all_sprites,
-                  i * (Block.WIDTH + Block.INDENT),
-                  j * (Block.HEIGHT + Block.INDENT))
-            for j in range(GameWindow.N_BLOCKS)
-            for i in range(GameWindow.M_BLOCKS)
-        ]
+        self.blocks = []
+        for i in range(self.M_BLOCKS):
+            for j in range(self.N_BLOCKS):
+                if i * j % self.CONCRETE_BLOCK_FREQ == 0:
+                    self.blocks.append(ConcreteBlock(
+                        self.all_sprites, x=i * (Block.WIDTH + Block.INDENT),
+                        y=j * (Block.HEIGHT + Block.INDENT)))
+                else:
+                    self.blocks.append(Block(
+                        self.all_sprites, i * (Block.WIDTH + Block.INDENT),
+                        j * (Block.HEIGHT + Block.INDENT)))
 
     def blocks_draw(self):
         for block in self.blocks:
@@ -468,10 +503,20 @@ class GameWindow:
 
     def blocks_collision_handler(self, index):
         if index != -1:
-            self.score.up_score()
-            block = self.blocks.pop(index)
-            block.play_crashed_effect(self.is_game_volumes_on)
-            self.ball.collision_detector(block.rect)
+            block = self.blocks[index]
+            if (type(block) == Block) or \
+                    (type(block) == ConcreteBlock
+                        and block.get_hardness() == 0):
+                self.score.up_score()
+                block = self.blocks.pop(index)
+                block.play_crashed_effect(self.is_game_volumes_on)
+                self.ball.collision_detector(block.rect)
+            else:
+                block = self.blocks[index]
+                block.play_crashed_effect(self.is_game_volumes_on)
+
+                block.block_hitted()
+                self.ball.collision_detector(block.rect)
 
     def events_handler(self):
         for event in pygame.event.get():
