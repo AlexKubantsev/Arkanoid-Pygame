@@ -116,6 +116,7 @@ class Ball(pygame.sprite.Sprite):
     FONT_SIZE = 36
     LIVES_TEMPLATE = "Lives left: {}"
     Y_INDENT_COEFF = 0.95
+    COLLISION_EPSILON = 10
 
     def __init__(self, window_sizes, all_sprites):
         super().__init__(all_sprites)
@@ -194,6 +195,24 @@ class Ball(pygame.sprite.Sprite):
     def update(self):
         self.rect.x += self.x_direction * self.speed
         self.rect.y += self.y_direction * self.speed
+
+    def collision_detector(self, rect):
+
+        if self.get_x_direction() > 0:
+            dx = self.rect.right - rect.left
+        else:
+            dx = rect.right - self.rect.left
+        if self.get_y_direction() > 0:
+            dy = self.rect.bottom - rect.top
+        else:
+            dy = rect.bottom - self.rect.top
+        if abs(dx - dy) < self.COLLISION_EPSILON:
+            self.invert_x_direction()
+            self.invert_y_direction()
+        elif dx > dy:
+            self.invert_y_direction()
+        elif dx < dy:
+            self.invert_x_direction()
 
 
 class Block(pygame.sprite.Sprite):
@@ -296,7 +315,7 @@ class GameWindow:
     FPS = 60
     N_BLOCKS = 8
     M_BLOCKS = 18
-    COLLISION_EPSILON = 10
+
     LOSE = 0
     WIN = 1
 
@@ -417,7 +436,7 @@ class GameWindow:
         if self.ball.rect.colliderect(self.paddle.rect)\
                 and self.ball.get_y_direction() > 0:
             self.paddle.play_touch_effect(self.is_game_volumes_on)
-            self.collision_detector(self.paddle.rect)
+            self.ball.collision_detector(self.paddle.rect)
 
         up_collision_line = self.ball.rect.clipline(0, 0, self.width, 0)
         right_collision_line = self.ball.rect.clipline(
@@ -452,25 +471,7 @@ class GameWindow:
             self.score.up_score()
             block = self.blocks.pop(index)
             block.play_crashed_effect(self.is_game_volumes_on)
-            self.collision_detector(block.rect)
-
-    def collision_detector(self, rect):
-
-        if self.ball.get_x_direction() > 0:
-            dx = self.ball.rect.right - rect.left
-        else:
-            dx = rect.right - self.ball.rect.left
-        if self.ball.get_y_direction() > 0:
-            dy = self.ball.rect.bottom - rect.top
-        else:
-            dy = rect.bottom - self.ball.rect.top
-        if abs(dx - dy) < self.COLLISION_EPSILON:
-            self.ball.invert_x_direction()
-            self.ball.invert_y_direction()
-        elif dx > dy:
-            self.ball.invert_y_direction()
-        elif dx < dy:
-            self.ball.invert_x_direction()
+            self.ball.collision_detector(block.rect)
 
     def events_handler(self):
         for event in pygame.event.get():
